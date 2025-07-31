@@ -24,7 +24,20 @@ SCOPES = [
 def get_sheets_client():
     """Initialize and return Google Sheets client"""
     try:
-        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH, scopes=SCOPES)
+        import os
+        import json
+        
+        # Check if we're in production (environment variable) or local development (file)
+        if 'SERVICE_ACCOUNT_JSON' in os.environ:
+            # Production: use environment variable
+            print("Using environment variable for credentials")
+            service_account_info = json.loads(os.environ['SERVICE_ACCOUNT_JSON'])
+            creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+        else:
+            # Local development: use file
+            print(f"Using file for credentials: {SERVICE_ACCOUNT_PATH}")
+            creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH, scopes=SCOPES)
+        
         client = gspread.authorize(creds)
         return client
     except Exception as e:
