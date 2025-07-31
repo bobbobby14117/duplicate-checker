@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Duplicate Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-orange: #ff6b35;
+            --secondary-orange: #ff8c42;
+            --accent-orange: #ffa366;
+            --dark-bg: #1a1a1a;
+            --darker-bg: #0d0d0d;
+            --card-bg: #2a2a2a;
+            --text-white: #ffffff;
+            --text-gray: #b0b0b0;
+            --border-gray: #404040;
+            --success-green: #00d2ff;
+            --warning-orange: #fbbc04;
+            --danger-red: #ff3860;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--darker-bg);
+            color: var(--text-white);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--card-bg) 100%);
+            border-radius: 24px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, var(--primary-orange), var(--secondary-orange));
+            opacity: 0.1;
+            z-index: 1;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            letter-spacing: -2px;
+        }
+
+        .header p {
+            font-size: 1.3rem;
+            color: var(--text-gray);
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid var(--border-gray);
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-orange), var(--secondary-orange));
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-orange), var(--secondary-orange));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .backend-status {
+            background: var(--dark-bg);
+            border: 2px solid var(--border-gray);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .backend-status.connected {
+            border-color: var(--success-green);
+            background: rgba(0, 210, 255, 0.05);
+        }
+
+        .backend-status.disconnected {
+            border-color: var(--danger-red);
+            background: rgba(255, 56, 96, 0.05);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger-red);
+            animation: pulse 2s infinite;
+        }
+
+        .backend-status.connected .status-indicator {
+            background: var(--success-green);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .upload-card {
+            background: var(--dark-bg);
+            border: 2px dashed var(--border-gray);
+            border-radius: 16px;
+            padding: 40px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-card:hover {
+            border-color: var(--primary-orange);
+            background: rgba(255, 107, 53, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .upload-card.google-sheets {
+            border-color: var(--success-green);
+            background: rgba(0, 210, 255, 0.05);
+            cursor: default;
+        }
+
+        .upload-card.filled {
+            border-color: var(--success-green);
+            background: rgba(52, 168, 83, 0.05);
+        }
+
+        .upload-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-orange);
+            margin-bottom: 16px;
+        }
+
+        .upload-card.google-sheets .upload-icon {
+            color: var(--success-green);
+        }
+
+        .upload-card.filled .upload-icon {
+            color: var(--success-green);
+        }
+
+        .upload-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-gray);
+            margin-bottom: 16px;
+        }
+
+        .file-info {
+            font-size: 0.8rem;
+            color: var(--success-green);
+            font-weight: 500;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-orange), var(--secondary-orange));
+            color: var(--text-white);
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-green), #4caf50);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning-orange), #ff9800);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-red), #f44336);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: var(--dark-bg);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            border: 1px solid var(--border-gray);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-orange), var(--secondary-orange));
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-orange);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .processing {
+            text-align: center;
+            padding: 80px 40px;
+            display: none;
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--border-gray);
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-gray);
+            border-top: 4px solid var(--primary-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 32px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .processing h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: 16px;
+        }
+
+        .processing p {
+            color: var(--text-gray);
+            font-size: 1.1rem;
+        }
+
+        .results {
+            display: none;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid var(--border-gray);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .results::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--success-green), #00b8d4);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .results-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-white);
+        }
+
+        .table-container {
+            background: var(--dark-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-gray);
+            max-height: 600px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            background: var(--card-bg);
+            color: var(--text-white);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--primary-orange);
+        }
+
+        .table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-gray);
+            color: var(--text-gray);
+        }
+
+        .table tr:hover {
+            background: rgba(255, 107, 53, 0.05);
+        }
+
+        .duplicate-row {
+            background: rgba(255, 56, 96, 0.1) !important;
+            border-left: 4px solid var(--danger-red);
+        }
+
+        .duplicate-badge {
+            background: var(--danger-red);
+            color: var(--text-white);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .new-badge {
+            background: var(--success-green);
+            color: var(--text-white);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: rgba(52, 168, 83, 0.1);
+            border-color: var(--success-green);
+            color: var(--success-green);
+        }
+
+        .alert-warning {
+            background: rgba(251, 188, 4, 0.1);
+            border-color: var(--warning-orange);
+            color: var(--warning-orange);
+        }
+
+        .alert-info {
+            background: rgba(255, 107, 53, 0.1);
+            border-color: var(--primary-orange);
+            color: var(--primary-orange);
+        }
+
+        .alert-error {
+            background: rgba(234, 67, 53, 0.1);
+            border-color: var(--danger-red);
+            color: var(--danger-red);
+        }
+
+        .progress-container {
+            background: var(--dark-bg);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border-gray);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-orange), var(--secondary-orange));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: var(--text-gray);
+            font-size: 0.9rem;
+        }
+
+        .refresh-button {
+            background: linear-gradient(135deg, var(--success-green), #4caf50);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 210, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 40px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Advanced Duplicate Checker</h1>
+                <p>Smart contact deduplication powered by Google Sheets integration</p>
+            </div>
+        </div>
+
+        <!-- Backend Status -->
+        <div class="backend-status" id="backendStatus">
+            <div class="status-indicator"></div>
+            <div>
+                <strong>Backend Status:</strong> <span id="statusText">Checking connection...</span>
+                <button class="refresh-button" onclick="checkBackendConnection()" style="margin-left: 12px;">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="section" id="uploadSection">
+            <div class="section-title">
+                <div class="section-icon">📁</div>
+                Data Sources
+            </div>
+            
+            <div class="upload-grid">
+                <div class="upload-card google-sheets">
+                    <div class="upload-content">
+                        <div class="upload-icon">📊</div>
+                        <div class="upload-title">Master Database</div>
+                        <div class="upload-subtitle">Connected to Google Sheets</div>
+                        <div class="file-info" id="masterFileInfo">Automatic sync enabled</div>
+                    </div>
+                </div>
+                
+                <div class="upload-card" id="checkCard" onclick="document.getElementById('checkFile').click()">
+                    <div class="upload-content">
+                        <div class="upload-icon">🔍</div>
+                        <div class="upload-title">List to Check</div>
+                        <div class="upload-subtitle">CSV must have columns named: "Firm Name" and "Emails"</div>
+                        <div class="file-info" id="checkFileInfo"></div>
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" id="checkFile" class="file-input" accept=".csv" onchange="handleCheckUpload(event)">
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="processBtn" onclick="processDuplicates()" disabled>
+                    🚀 Start Duplicate Analysis
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="section">
+            <div class="section-title">
+                <div class="section-icon">📊</div>
+                Statistics
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="masterCount">0</div>
+                    <div class="stat-label">Master Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="checkCount">0</div>
+                    <div class="stat-label">Records to Check</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="duplicateCount">0</div>
+                    <div class="stat-label">Duplicates Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="uniqueCount">0</div>
+                    <div class="stat-label">Unique Records</div>
+                </div>
+            </div>
+
+            <div id="statusAlert" class="alert alert-info">
+                <strong>📋 CSV Requirements:</strong> Your uploaded CSV must have exactly two columns named "Firm Name" and "Emails". The master database is automatically synced from Google Sheets.
+            </div>
+        </div>
+
+        <!-- Processing Animation -->
+        <div class="processing" id="processing">
+            <div class="spinner"></div>
+            <h3>Analyzing Data</h3>
+            <p>Using advanced algorithms to detect duplicates based on emails and company names</p>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Initializing...</div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2 class="results-title">Analysis Results</h2>
+                <div>
+                    <button class="btn btn-success" onclick="downloadResults()">
+                        💾 Download Results
+                    </button>
+                    <button class="btn btn-warning" onclick="resetForm()" style="margin-left: 10px;">
+                        🔄 New Analysis
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Lead Owner</th>
+                            <th>Match Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Results populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ UPDATE THIS URL TO MATCH YOUR BACKEND ⚠️
+        const BACKEND_API_URL = 'http://localhost:5000/api';
+        
+        // Global variables
+        let masterData = [];
+        let checkData = [];
+        let results = [];
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Advanced Duplicate Checker loaded successfully');
+            checkBackendConnection();
+            updateUI();
+        });
+
+        // Check backend connection
+        async function checkBackendConnection() {
+            const statusDiv = document.getElementById('backendStatus');
+            const statusText = document.getElementById('statusText');
+            
+            try {
+                const response = await fetch(`${BACKEND_API_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.className = 'backend-status connected';
+                    statusText.textContent = 'Connected to backend API ✅';
+                    
+                    // Try to load master data
+                    await loadMasterData();
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                statusDiv.className = 'backend-status disconnected';
+                statusText.textContent = `Backend not available ❌ (${error.message})`;
+                showStatus('Backend API is not running. Please start the Flask server first.', 'error');
+            }
+        }
+
+        // Load master data from Google Sheets
+        async function loadMasterData() {
+            try {
+                showStatus('📊 Loading master database from Google Sheets...', 'info');
+                
+                const response = await fetch(`${BACKEND_API_URL}/master-data`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch master data');
+                }
+
+                const result = await response.json();
+                masterData = result.data;
+                
+                document.getElementById('masterFileInfo').textContent = 
+                    `${masterData.length} records loaded • Last updated: ${new Date(result.last_updated).toLocaleString()}`;
+                
+                updateUI();
+                showStatus(`✅ Master database loaded successfully (${masterData.length} records)`, 'success');
+
+            } catch (error) {
+                console.error('Error loading master data:', error);
+                showStatus(`❌ Error loading master data: ${error.message}`, 'error');
+                document.getElementById('masterFileInfo').textContent = 'Failed to load data';
+            }
+        }
+
+        // Handle check file upload
+        function handleCheckUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                parseCSV(file, (data) => {
+                    if (validateCheckData(data)) {
+                        checkData = data;
+                        updateFileInfo('checkFileInfo', `${file.name} (${data.length} records)`);
+                        document.getElementById('checkCard').classList.add('filled');
+                        updateUI();
+                        showStatus('✅ Check list uploaded successfully', 'success');
+                    }
+                });
+            }
+        }
+
+        // Parse CSV file
+        function parseCSV(file, callback) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.errors.length > 0) {
+                        showStatus('❌ Error parsing CSV: ' + results.errors[0].message, 'error');
+                        return;
+                    }
+                    callback(results.data);
+                },
+                error: function(error) {
+                    showStatus('❌ Error reading file: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // Validate check data structure
+        function validateCheckData(data) {
+            if (data.length === 0) {
+                showStatus('❌ Check CSV file is empty', 'error');
+                return false;
+            }
+
+            const requiredColumns = ['Company', 'Email'];
+            const firstRow = data[0];
+            const missingColumns = requiredColumns.filter(col => !firstRow.hasOwnProperty(col));
+            
+            if (missingColumns.length > 0) {
+                showStatus(`❌ Check CSV is missing required columns: ${missingColumns.join(', ')}. Available columns: ${Object.keys(firstRow).join(', ')}`, 'error');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Update file info display
+        function updateFileInfo(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+            }
+        }
+
+        // Update UI state
+        function updateUI() {
+            const masterCount = masterData.length;
+            const checkCount = checkData.length;
+            const canProcess = masterCount > 0 && checkCount > 0;
+
+            document.getElementById('masterCount').textContent = masterCount;
+            document.getElementById('checkCount').textContent = checkCount;
+            document.getElementById('processBtn').disabled = !canProcess;
+
+            if (results.length > 0) {
+                const duplicates = results.filter(r => r.isDuplicate).length;
+                const unique = results.length - duplicates;
+                document.getElementById('duplicateCount').textContent = duplicates;
+                document.getElementById('uniqueCount').textContent = unique;
+            }
+        }
+
+        // Main duplicate processing function
+        function processDuplicates() {
+            if (masterData.length === 0) {
+                showStatus('❌ Master database not loaded. Please check backend connection.', 'error');
+                return;
+            }
+            
+            if (checkData.length === 0) {
+                showStatus('❌ Please upload a CSV file to check first', 'error');
+                return;
+            }
+
+            // Show processing UI
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('processing').style.display = 'block';
+            document.getElementById('progressContainer').style.display = 'block';
+
+            // Start processing
+            setTimeout(() => {
+                processData();
+            }, 500);
+        }
+
+        // Process the data for duplicates
+        function processData() {
+            results = [];
+            let processed = 0;
+            const total = checkData.length;
+
+            // Create lookup structures for faster processing
+            const emailLookup = new Map();
+            const companyLookup = new Map();
+
+            // Build lookup maps from master data
+            masterData.forEach(record => {
+                const email = normalizeEmail(record['Email']);
+                const company = normalizeCompany(record['Company / Account']);
+                const leadOwner = record['Lead Owner'] || '';
+
+                if (email) {
+                    emailLookup.set(email, { company: record['Company / Account'], leadOwner });
+                }
+                if (company) {
+                    companyLookup.set(company, { company: record['Company / Account'], leadOwner });
+                }
+            });
+
+            // Process each record in check data
+            checkData.forEach((record, index) => {
+                setTimeout(() => {
+                    const result = processRecord(record, emailLookup, companyLookup);
+                    results.push(result);
+                    
+                    processed++;
+                    updateProgress(processed, total);
+
+                    if (processed === total) {
+                        finishProcessing();
+                    }
+                }, index * 10); // Small delay for UI updates
+            });
+        }
+
+        // Process individual record
+        function processRecord(record, emailLookup, companyLookup) {
+            const company = record['Firm Name'] || '';
+            const email = record['Emails'] || '';
+            
+            let isDuplicate = false;
+            let matchReason = '';
+            let leadOwner = '';
+            let matchedCompany = '';
+
+            // Check for exact email match first
+            const normalizedEmail = normalizeEmail(email);
+            if (normalizedEmail && emailLookup.has(normalizedEmail)) {
+                const match = emailLookup.get(normalizedEmail);
+                isDuplicate = true;
+                matchReason = `Exact email match: ${email}`;
+                leadOwner = match.leadOwner;
+                matchedCompany = match.company;
+            }
+            // Check for company name similarity
+            else if (company) {
+                const matchedCompanyName = findSimilarCompany(company, companyLookup);
+                if (matchedCompanyName) {
+                    const match = companyLookup.get(matchedCompanyName);
+                    isDuplicate = true;
+                    matchReason = `Similar company name: ${company} → ${match.company}`;
+                    leadOwner = match.leadOwner;
+                    matchedCompany = match.company;
+                }
+            }
+
+            return {
+                company,
+                email,
+                isDuplicate,
+                matchReason,
+                leadOwner,
+                matchedCompany,
+                originalData: record
+            };
+        }
+
+        // Normalize email for comparison
+        function normalizeEmail(email) {
+            if (!email) return '';
+            return email.toLowerCase().trim();
+        }
+
+        // Normalize company name for comparison
+        function normalizeCompany(company) {
+            if (!company) return '';
+            
+            let normalized = company.toLowerCase().trim();
+            
+            // Remove common business suffixes
+            const suffixes = [
+                ' llc', ' inc', ' corp', ' corporation', ' ltd', ' limited',
+                ' co', ' company', ' group', ' partners', ' partnership',
+                ' lp', ' llp', ' pllc', ' pc', ' pa', ' chartered'
+            ];
+            
+            for (let suffix of suffixes) {
+                if (normalized.endsWith(suffix)) {
+                    normalized = normalized.slice(0, -suffix.length).trim();
+                }
+            }
+            
+            // Remove common punctuation and normalize whitespace
+            normalized = normalized.replace(/[,\.&]/g, ' ')
+                                 .replace(/\s+/g, ' ')
+                                 .replace(/\band\b/g, '')
+                                 .trim();
+            
+            return normalized;
+        }
+
+        // Find similar company using fuzzy matching
+        function findSimilarCompany(company, companyLookup) {
+            const normalizedCompany = normalizeCompany(company);
+            if (!normalizedCompany) return null;
+
+            // First, check for exact match
+            if (companyLookup.has(normalizedCompany)) {
+                return normalizedCompany;
+            }
+
+            // Check for substring matches and word overlap
+            const companyWords = new Set(normalizedCompany.split(' ').filter(word => word.length > 2));
+            
+            for (let [companyKey] of companyLookup) {
+                const keyWords = new Set(companyKey.split(' ').filter(word => word.length > 2));
+                
+                // Skip very short names to avoid false positives
+                if (companyWords.size < 2 && keyWords.size < 2) continue;
+                
+                // Calculate word overlap
+                const intersection = new Set([...companyWords].filter(word => keyWords.has(word)));
+                const union = new Set([...companyWords, ...keyWords]);
+                
+                if (union.size > 0) {
+                    const similarity = intersection.size / union.size;
+                    
+                    // If similarity is high (>60%), consider it a match
+                    if (similarity > 0.6) {
+                        return companyKey;
+                    }
+                }
+                
+                // Also check for substring containment
+                if (normalizedCompany.includes(companyKey) || companyKey.includes(normalizedCompany)) {
+                    // Additional check to avoid very short matches
+                    const shorterLength = Math.min(normalizedCompany.length, companyKey.length);
+                    if (shorterLength > 5) {
+                        return companyKey;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // Update progress display
+        function updateProgress(processed, total) {
+            const percentage = (processed / total) * 100;
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `Processing ${processed} of ${total} records...`;
+        }
+
+        // Finish processing and show results
+        function finishProcessing() {
+            setTimeout(() => {
+                document.getElementById('processing').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+                
+                displayResults();
+                updateUI();
+                
+                const duplicates = results.filter(r => r.isDuplicate).length;
+                const unique = results.length - duplicates;
+                
+                showStatus(`✅ Analysis complete! Found ${duplicates} duplicates and ${unique} unique records out of ${results.length} total.`, 'success');
+            }, 1000);
+        }
+
+        // Display results in table
+        function displayResults() {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                if (result.isDuplicate) {
+                    row.classList.add('duplicate-row');
+                }
+
+                const statusBadge = result.isDuplicate 
+                    ? '<span class="duplicate-badge">Duplicate</span>'
+                    : '<span class="new-badge">New</span>';
+
+                row.innerHTML = `
+                    <td>${escapeHtml(result.company)}</td>
+                    <td>${escapeHtml(result.email)}</td>
+                    <td>${statusBadge}</td>
+                    <td>${escapeHtml(result.leadOwner)}</td>
+                    <td>${escapeHtml(result.matchReason || 'No match found')}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Download results as CSV
+        function downloadResults() {
+            if (results.length === 0) {
+                showStatus('⚠️ No results to download', 'warning');
+                return;
+            }
+
+            const csvData = results.map(result => ({
+                'Firm_Name': result.company,
+                'Emails': result.email,
+                'Is_Duplicate': result.isDuplicate,
+                'Duplicate_Reason': result.matchReason || '',
+                'Lead_Owner': result.leadOwner || '',
+                'Matched_Company': result.matchedCompany || '',
+                ...result.originalData
+            }));
+
+            const csv = Papa.unparse(csvData);
+            downloadCSV(csv, `duplicate_analysis_${new Date().toISOString().slice(0,10)}.csv`);
+            showStatus('✅ Results downloaded successfully', 'success');
+        }
+
+        // Download CSV helper function
+        function downloadCSV(csvContent, filename) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Reset form to initial state
+        function resetForm() {
+            checkData = [];
+            results = [];
+            
+            document.getElementById('checkFile').value = '';
+            updateFileInfo('checkFileInfo', '');
+            document.getElementById('checkCard').classList.remove('filled');
+            
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('processing').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'none';
+            
+            updateUI();
+            showStatus('🔄 Form reset. Upload a CSV file to start a new analysis.', 'info');
+        }
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusAlert');
+            if (!statusEl) return;
+
+            statusEl.className = `alert alert-${type}`;
+            statusEl.textContent = message;
+            
+            console.log(`Status (${type}):`, message);
+        }
+
+        // Escape HTML for safe display
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text.toString();
+            return div.innerHTML;
+        }
+
+        // Make functions globally available
+        window.handleCheckUpload = handleCheckUpload;
+        window.processDuplicates = processDuplicates;
+        window.downloadResults = downloadResults;
+        window.resetForm = resetForm;
+        window.checkBackendConnection = checkBackendConnection;
+        window.loadMasterData = loadMasterData;
+
+        console.log('🚀 Advanced Duplicate Checker with Google Sheets loaded successfully!');
+    </script>
+</body>
+</html>
