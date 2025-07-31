@@ -46,7 +46,7 @@ def get_sheets_client():
 
 @app.route('/api/master-data', methods=['GET'])
 def get_master_data():
-    """Fetch master database from Google Sheets"""
+    """Fetch master database from Google Sheets with data cleaning"""
     try:
         client = get_sheets_client()
         sheet = client.open_by_key(MASTER_SPREADSHEET_ID)
@@ -67,8 +67,28 @@ def get_master_data():
                     'available_columns': list(first_record.keys())
                 }), 400
         
-        # Clean up empty rows
-        cleaned_records = [record for record in records if any(str(value).strip() for value in record.values())]
+        # Clean up empty rows and invalid data
+        cleaned_records = []
+        for record in records:
+            if any(str(value).strip() for value in record.values()):
+                # Clean each field in the record
+                cleaned_record = {}
+                for key, value in record.items():
+                    # Handle problematic values
+                    if value == float('inf') or value == float('-inf'):
+                        cleaned_record[key] = ""
+                    elif str(value).lower() == 'infinity' or str(value).lower() == '-infinity':
+                        cleaned_record[key] = ""
+                    elif str(value).startswith('#'):  # Excel errors like #DIV/0!, #REF!, etc.
+                        cleaned_record[key] = ""
+                    else:
+                        # Convert to string and clean
+                        cleaned_value = str(value).strip()
+                        # Remove or replace problematic characters
+                        cleaned_value = cleaned_value.replace('\x00', '')  # Remove null bytes
+                        cleaned_record[key] = cleaned_value
+                
+                cleaned_records.append(cleaned_record)
         
         return jsonify({
             'success': True,
@@ -85,6 +105,7 @@ def get_master_data():
     except FileNotFoundError:
         return jsonify({'error': 'Service account file not found. Check the SERVICE_ACCOUNT_PATH.'}), 500
     except Exception as e:
+        print(f"Error in get_master_data: {str(e)}")
         return jsonify({'error': f'Failed to fetch data: {str(e)}'}), 500
 
 @app.route('/api/health', methods=['GET'])
