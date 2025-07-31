@@ -74,7 +74,7 @@ def get_master_data():
             'success': True,
             'data': cleaned_records,
             'count': len(cleaned_records),
-            'last_updated': worksheet.updated,
+            'last_updated': 'Recently updated',
             'timestamp': datetime.now().isoformat()
         })
         
